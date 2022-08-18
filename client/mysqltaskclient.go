@@ -10,15 +10,15 @@ import (
 
 const DBSAAS = "saasdb"
 
-func NewBackupTaskRequest(vmIp, host, user, passwd string, Port int) *pb.BackupTaskRequest {
+func NewBackupTaskRequest(vmIp, host, user, passwd string, port,domainid int, btype pb.BackUpType_Types) *pb.BackupTaskRequest {
 	b := &pb.BackupTaskRequest{
 		WorkVm:          NewWorkVm(vmIp),
-		MySQLConn:       NewMySQLConn(host, user, passwd, Port),
-		BackUpType:      NewBackUpType(),
+		MySQLConn:       NewMySQLConn(host, user, passwd, port),
+		BackUpType:      NewBackUpType(btype),
 		RemoteStorageS3: nil,
-		SaasDBMySQLConn: NewSaasMySQLConn(host, user, passwd, Port),
+		SaasDBMySQLConn: NewSaasMySQLConn(host, user, passwd, port),
 		BackUpTimeout:   5,
-		DomainId:        100,
+		DomainId:        uint32(domainid),
 	}
 	return b
 }
@@ -45,8 +45,22 @@ func NewSaasMySQLConn(host, user, passwd string, Port int) *pb.SaasDBMySQLConn {
 	}
 }
 
-func NewBackUpType() *pb.BackUpType {
-	return &pb.BackUpType{Type: pb.BackUpType_FullBackUpWithMySQLDump}
+func NewBackUpType(mode pb.BackUpType_Types) *pb.BackUpType {
+
+	if mode == pb.BackUpType_FullBackUpWithXtra {
+		return &pb.BackUpType{Type: pb.BackUpType_FullBackUpWithXtra}
+	} else if mode == pb.BackUpType_IncrBackUpWithXtra {
+		return &pb.BackUpType{Type: pb.BackUpType_IncrBackUpWithXtra}
+	} else if mode == (pb.BackUpType_FullBackUpWithMydumper) {
+		return &pb.BackUpType{Type: pb.BackUpType_FullBackUpWithMydumper}
+	} else if mode == (pb.BackUpType_SingleTableBackUpWithMydumper) {
+		return &pb.BackUpType{Type: pb.BackUpType_SingleTableBackUpWithMydumper}
+	} else if mode == (pb.BackUpType_FullBackUpWithMySQLDump) {
+		return &pb.BackUpType{Type: pb.BackUpType_FullBackUpWithMySQLDump}
+	} else if mode == (pb.BackUpType_SingleTableBackUpWithMySQLDump) {
+		return &pb.BackUpType{Type: pb.BackUpType_SingleTableBackUpWithMySQLDump}
+	}
+	return &pb.BackUpType{Type: pb.BackUpType_FullBackUpWithXtra}
 }
 func main() {
 	conn, err := grpc.Dial("127.0.0.1:3000", grpc.WithInsecure())
@@ -63,8 +77,9 @@ func main() {
 	host := "127.0.0.1"
 	user := "root"
 	passwd := "letsg0"
-	port := 3306
-	res, err := client.NewBackup(ctx, NewBackupTaskRequest(vmip, host, user, passwd, port))
+	port := 3307
+
+	res, err := client.NewBackup(ctx, NewBackupTaskRequest(vmip, host, user, passwd, port ,100, pb.BackUpType_FullBackUpWithMySQLDump))
 	if err != nil {
 		fmt.Println(err)
 	}

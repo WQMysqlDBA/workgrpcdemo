@@ -38,10 +38,8 @@ func (server *BackUpServer) NewBackup(con context.Context, req *pb.BackupTaskReq
 	workVm := req.GetWorkVm()
 	backuptime := req.GetBackUpTimeout()
 	domainid := req.GetDomainId()
-	// 在这里可以实现相关的 备份具体流程了
-	// 可以导入其他包的备份恢复的方法了
-	backup_cmd := fmt.Sprintf("mysqldump -h %v -u %v -p%v -P %v -A > %v_Full.sql", mysqlConn.MySQLHost, mysqlConn.MySQLUser, mysqlConn.MySQLUserpasswd, mysqlConn.MySQLPort, time.Now().Format("2006-01-02"))
-	log.Printf("receive a NewBackup task with %v,%v,%v\nwill run command \"%v\"", backupType, mysqlConn, workVm, backup_cmd)
+
+	log.Printf("receive a NewBackup task with %v,%v,%v", backupType, mysqlConn, workVm)
 
 	job := &backjobmetadata{
 		BackUpType:      backupType,
@@ -54,7 +52,12 @@ func (server *BackUpServer) NewBackup(con context.Context, req *pb.BackupTaskReq
 	// 设置任务的超时时间
 	//tt := time.Hour * time.Duration(job.BackUpTimeout)
 	ctx := context.Background()
-	db := SaasDB(job.SaasDBMySQLConn.MySQLUser, job.SaasDBMySQLConn.MySQLUserpasswd, job.SaasDBMySQLConn.MySQLHost, job.SaasDBMySQLConn.SaaSDBName, int(job.SaasDBMySQLConn.MySQLPort))
+	db, err := SaasDB(job.SaasDBMySQLConn.MySQLUser, job.SaasDBMySQLConn.MySQLUserpasswd, job.SaasDBMySQLConn.MySQLHost, job.SaasDBMySQLConn.SaaSDBName, int(job.SaasDBMySQLConn.MySQLPort))
+	if err != nil {
+		return &pb.BackupTaskResponse{MessageInfo: "Demo Test conn saas db error,quit task",
+			MessageWarn: "Demo Test conn saas db error,quit task",
+		}, nil
+	}
 
 	go server.BackupJob(ctx, job, db)
 
@@ -68,16 +71,6 @@ func (server *BackUpServer) BackupJob(ctx context.Context, j *backjobmetadata, d
 	// TODO 发起备份的时候，先检查 实例的状态是否是 available ，再决定是否可以进行备份
 	onlyOneBackJobRun.Lock()
 	defer onlyOneBackJobRun.Unlock()
-
-	// below to test 调用BackupJob 是通过go命令调用的
-	// server 运行着，这里其实不需要 `waitgroup`
-
-	//array := [...]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0}
-	//array := [...]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 0}
-	//for k, v := range array {
-	//	fmt.Println(k, v)
-	//	time.Sleep(time.Second)
-	//}
 
 	if j.BackUpType.Type == pb.BackUpType_FullBackUpWithXtra {
 	} else if j.BackUpType.Type == pb.BackUpType_IncrBackUpWithXtra {
@@ -99,14 +92,15 @@ func (server *BackUpServer) UseMysqlDump(ctx context.Context, j *backjobmetadata
 	if err != nil {
 		return fmt.Errorf("生成备份日志的uuid记录失败 %w", err)
 	}
-	fmt.Println(backLogUuid)
+
+	backUpFeature := model.NewBackUpFeature("")
 	backlog := &model.BackLog{
 		GvaModel:      model.GvaModel{},
 		DomainId:      int(j.DomainId),
 		BackupType:    "mysqldump",
 		DataSize:      0,
 		Status:        "backup",
-		BackUpFeature: nil,
+		BackUpFeature: backUpFeature,
 		BackUpUuid:    backLogUuid,
 	}
 	err = model.CreateBackLog(db, backlog)
@@ -115,27 +109,25 @@ func (server *BackUpServer) UseMysqlDump(ctx context.Context, j *backjobmetadata
 		return fmt.Errorf("创建备份日志到saas数据库失败 err:%w", err)
 	}
 
-	// 记录当前备份日志的log的uuid ,完成备份任务之后，更新备份是否成功 成功的话 还有feature的信息
-
 	// 组装mysqldump的命令 并完成备份
 	sqlFile := FileNameFormat() + "_full.sql"
-	backupCmd := fmt.Sprintf("mysqldump -h %v -u %v -p%v -P %v -A > %v", j.MySQLConn.MySQLHost, j.MySQLConn.MySQLUser, j.MySQLConn.MySQLUserpasswd, j.MySQLConn.MySQLPort, sqlFile)
+	backupCmd := fmt.Sprintf("mysqldump -h %v -u %v -p%v -P %v --set-gtid-purged=off --databases saasdb > %v", j.MySQLConn.MySQLHost, j.MySQLConn.MySQLUser, j.MySQLConn.MySQLUserpasswd, j.MySQLConn.MySQLPort, sqlFile)
 	if output, err := PubCmd(backupCmd, true); err != nil {
 		setvars := make(map[string]interface{})
 		setvars["status"] = "failed"
 		model.UpdateBackLogByUuid(db, backLogUuid, setvars)
 		return fmt.Errorf("run mydumper cmd error, output is  %v \n And the err is :%v ", output, err.Error())
 	}
-
 	// 到这里备份完成了，获取备份文件的大小 并更新saas数据库状态
 	if backSqlFileInfo, err := os.Stat(sqlFile); err == nil {
 		size := backSqlFileInfo.Size() // bytes
 		status := "success"
-		model.UpdateBackLogJsonByUuid(db, backLogUuid, status, backSqlFileInfo.Name(), size)
+		extra := make(map[string]interface{})
+		extra["back_file_name"] = backSqlFileInfo.Name()
+		extra["backup_cmd"] = backupCmd
+		model.UpdateBackLogJsonByUuid(db, backLogUuid, status, size, extra)
 	}
-
-	// 这里需要使用两个go routine 和一个chan 来做通信，获得 备份任务的go routine的状态 并更新到saas数据库中
-
+	// TODO 上传s3
 	return nil
 }
 
@@ -172,15 +164,14 @@ func PubCmd(cmd string, shell bool) (string, error) {
 
 func FileNameFormat() string {
 	nt := time.Now()
-	return fmt.Sprintf("%v%v%v-%v%v%v", nt.Year(), nt.Month(), nt.Day(), nt.Hour(), nt.Minute(), nt.Second())
+	return fmt.Sprintf("%v-%v%v%v", nt.Format("2006-01-02"), nt.Hour(), nt.Minute(), nt.Second())
 }
 
-func SaasDB(user, passwd, host, db string, port int) *gorm.DB {
+func SaasDB(user, passwd, host, db string, port int) (*gorm.DB, error) {
 	return model.GormMysql(user, passwd, host, db, port)
 }
 
 func main() {
-
 	listen, err := net.Listen("tcp", ":3000")
 	if err != nil {
 		log.Panic("xxxxxx")
@@ -190,5 +181,4 @@ func main() {
 	if err := s.Serve(listen); err != nil {
 		log.Println(fmt.Errorf("run serve err :%w", err))
 	}
-
 }

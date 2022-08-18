@@ -24,12 +24,12 @@ type BackLog struct {
 	BackupType    string         `json:"backupType" form:"backupType" gorm:"column:backup_type;type:enum('mysqldump','xtrafull','xtraincr','mydumper','redis','tidb');comment:备份类型;"`
 	DataSize      int            `json:"dataSize" form:"dataSize" gorm:"column:data_size;comment:;"`
 	Status        string         `json:"status" form:"status" gorm:"column:status;type:enum('backup','success','failed');comment:备份类型;"`
-	BackUpFeature *BackUpFeature `json:"backupfeature" gorm:"TYPE:json"`
+	BackUpFeature *BackUpFeature `json:"backupfeature" gorm:"TYPE:json;default:{}"`
 	BackUpUuid    uuid.UUID      `json:"back_up_uuid" gorm:"column:back_up_uuid;uniqueIndex:back_up_uuid"`
 }
+
 type BackUpFeature struct {
-	UserName     string `json:"user_name"`
-	UserPassword string `json:"user_password"`
+	BackFeature string `json:"extra"`
 }
 
 func (c BackUpFeature) Value() (driver.Value, error) {
@@ -44,4 +44,10 @@ func (c *BackUpFeature) Scan(input interface{}) error {
 // TableName BackLog 表名
 func (BackLog) TableName() string {
 	return "saas_back_log"
+}
+
+func NewBackUpFeature(a string) *BackUpFeature {
+	return &BackUpFeature{
+		BackFeature: a,
+	}
 }
