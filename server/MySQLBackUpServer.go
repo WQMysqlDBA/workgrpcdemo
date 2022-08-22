@@ -5,10 +5,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
-	"google.golang.org/grpc"
 	"gorm.io/gorm"
 	"log"
-	"net"
 	"os"
 	"os/exec"
 	"sync"
@@ -169,16 +167,4 @@ func FileNameFormat() string {
 
 func SaasDB(user, passwd, host, db string, port int) (*gorm.DB, error) {
 	return model.GormMysql(user, passwd, host, db, port)
-}
-
-func main() {
-	listen, err := net.Listen("tcp", ":3000")
-	if err != nil {
-		log.Panic("xxxxxx")
-	}
-	s := grpc.NewServer()
-	pb.RegisterMySQLBackupServiceServer(s, &BackUpServer{})
-	if err := s.Serve(listen); err != nil {
-		log.Println(fmt.Errorf("run serve err :%w", err))
-	}
 }
