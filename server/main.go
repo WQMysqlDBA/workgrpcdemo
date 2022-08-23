@@ -9,12 +9,12 @@ import (
 	"net"
 	"workgrpc/pb"
 )
-func main() {
 
+func main() {
+	// openssl生成SAN证书
+	//https://www.cnblogs.com/outsrkem/p/16056756.html
 	creditsServeKey := "/Users/anderalex/go/src/workgrpc/certify/server.key"
 	creditsServeCrt := "/Users/anderalex/go/src/workgrpc/certify/server.crt"
-	//commandName := "GrpcMySQLServer"
-
 	creds, _ := credentials.NewServerTLSFromFile(creditsServeCrt, creditsServeKey)
 	s := grpc.NewServer(grpc.Creds(creds))
 	listen, err := net.Listen("tcp", ":3000")

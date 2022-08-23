@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"time"
 	"workgrpc/pb"
 )
@@ -63,7 +64,11 @@ func NewBackUpType(mode pb.BackUpType_Types) *pb.BackUpType {
 	return &pb.BackUpType{Type: pb.BackUpType_FullBackUpWithXtra}
 }
 func main() {
-	conn, err := grpc.Dial("127.0.0.1:3000", grpc.WithInsecure())
+	creditsServePem := "/Users/anderalex/go/src/workgrpc/certify/server.crt"
+	commandName := "example.server.com"
+	creds, _ := credentials.NewClientTLSFromFile(creditsServePem, commandName)
+
+	conn, err := grpc.Dial("127.0.0.1:3000", grpc.WithTransportCredentials(creds))
 	if err != nil {
 		fmt.Println(err)
 	}
