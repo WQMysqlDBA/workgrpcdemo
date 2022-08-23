@@ -1,8 +1,6 @@
 package model
 
 import (
-	"encoding/json"
-	"fmt"
 	"gorm.io/gorm"
 )
 
@@ -22,14 +20,8 @@ func (InformationSchemaProcesslist) TableName() string {
 }
 
 func (r *InformationSchemaProcesslist) GetAllProcesslist(db *gorm.DB) []InformationSchemaProcesslist {
-	// TODO 这里没有获取到结果
 	resArr := make([]InformationSchemaProcesslist, 0, 0)
-	db.Debug().Table("PROCESSLIST").Find(&r).Scan(&resArr)
-
-	for _, v := range resArr {
-		if data, err := json.MarshalIndent(v, "", "\t"); err == nil {
-			fmt.Println(string(data))
-		}
-	}
+	selectcol := []string{"id", "user", "host", "db", "command", "time", "state", "info"}
+	db.Debug().Model(&r).Table(r.TableName()).Select(selectcol).Scan(&resArr)
 	return resArr
 }

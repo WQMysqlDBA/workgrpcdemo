@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"workgrpc/model"
 	"workgrpc/pb"
 )
@@ -19,14 +18,17 @@ func (server *ShowProcessListServer) NewShowProcesslist(ctx context.Context, req
 	}
 	var r model.InformationSchemaProcesslist
 	processList := r.GetAllProcesslist(db)
-
+	pL := make([]*pb.ProcessListInfo, 0, 0)
 	for _, v := range processList {
+		var a *pb.ProcessListInfo
 		if data, err := json.MarshalIndent(v, "", "\t"); err == nil {
-			fmt.Println(string(data))
-
+			err1 := json.Unmarshal(data, &a)
+			if err1 != nil {
+				return nil, err1
+			}
+			pL = append(pL, a)
 		}
 	}
-	processlistInfo := &pb.ShowProcesslistResponce{}
-	// TODO 这里先把数据拿到 ， 然后结构体copy的方法 到 return 这里
+	processlistInfo := &pb.ShowProcesslistResponce{ProcessListInfo: pL}
 	return processlistInfo, nil
 }
