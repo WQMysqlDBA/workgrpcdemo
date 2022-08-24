@@ -16,6 +16,12 @@ func (server *ShowProcessListServer) NewShowProcesslist(ctx context.Context, req
 	db, err := model.GormMysql("root", "letsg0", "127.0.0.1", "information_schema", 3307)
 	if err != nil {
 	}
+	defer func() {
+		if sqlDB, err := db.DB(); err == nil {
+			err = sqlDB.Close()
+		}
+	}()
+
 	var r model.InformationSchemaProcesslist
 	processList := r.GetAllProcesslist(db)
 	pL := make([]*pb.ProcessListInfo, 0, 0)

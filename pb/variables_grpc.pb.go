@@ -22,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MySQLVariablesServiceClient interface {
-	NewShowProcesslist(ctx context.Context, in *HandleVariablesRequest, opts ...grpc.CallOption) (*HandleVariablesResponse, error)
+	VariablesHandler(ctx context.Context, in *HandleVariablesRequest, opts ...grpc.CallOption) (*HandleVariablesResponse, error)
 }
 
 type mySQLVariablesServiceClient struct {
@@ -33,9 +33,9 @@ func NewMySQLVariablesServiceClient(cc grpc.ClientConnInterface) MySQLVariablesS
 	return &mySQLVariablesServiceClient{cc}
 }
 
-func (c *mySQLVariablesServiceClient) NewShowProcesslist(ctx context.Context, in *HandleVariablesRequest, opts ...grpc.CallOption) (*HandleVariablesResponse, error) {
+func (c *mySQLVariablesServiceClient) VariablesHandler(ctx context.Context, in *HandleVariablesRequest, opts ...grpc.CallOption) (*HandleVariablesResponse, error) {
 	out := new(HandleVariablesResponse)
-	err := c.cc.Invoke(ctx, "/hello_grpc.MySQLVariablesService/NewShowProcesslist", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/hello_grpc.MySQLVariablesService/VariablesHandler", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (c *mySQLVariablesServiceClient) NewShowProcesslist(ctx context.Context, in
 // All implementations must embed UnimplementedMySQLVariablesServiceServer
 // for forward compatibility
 type MySQLVariablesServiceServer interface {
-	NewShowProcesslist(context.Context, *HandleVariablesRequest) (*HandleVariablesResponse, error)
+	VariablesHandler(context.Context, *HandleVariablesRequest) (*HandleVariablesResponse, error)
 	mustEmbedUnimplementedMySQLVariablesServiceServer()
 }
 
@@ -54,8 +54,8 @@ type MySQLVariablesServiceServer interface {
 type UnimplementedMySQLVariablesServiceServer struct {
 }
 
-func (UnimplementedMySQLVariablesServiceServer) NewShowProcesslist(context.Context, *HandleVariablesRequest) (*HandleVariablesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NewShowProcesslist not implemented")
+func (UnimplementedMySQLVariablesServiceServer) VariablesHandler(context.Context, *HandleVariablesRequest) (*HandleVariablesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VariablesHandler not implemented")
 }
 func (UnimplementedMySQLVariablesServiceServer) mustEmbedUnimplementedMySQLVariablesServiceServer() {}
 
@@ -70,20 +70,20 @@ func RegisterMySQLVariablesServiceServer(s grpc.ServiceRegistrar, srv MySQLVaria
 	s.RegisterService(&MySQLVariablesService_ServiceDesc, srv)
 }
 
-func _MySQLVariablesService_NewShowProcesslist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MySQLVariablesService_VariablesHandler_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HandleVariablesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MySQLVariablesServiceServer).NewShowProcesslist(ctx, in)
+		return srv.(MySQLVariablesServiceServer).VariablesHandler(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/hello_grpc.MySQLVariablesService/NewShowProcesslist",
+		FullMethod: "/hello_grpc.MySQLVariablesService/VariablesHandler",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MySQLVariablesServiceServer).NewShowProcesslist(ctx, req.(*HandleVariablesRequest))
+		return srv.(MySQLVariablesServiceServer).VariablesHandler(ctx, req.(*HandleVariablesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -96,8 +96,8 @@ var MySQLVariablesService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MySQLVariablesServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "NewShowProcesslist",
-			Handler:    _MySQLVariablesService_NewShowProcesslist_Handler,
+			MethodName: "VariablesHandler",
+			Handler:    _MySQLVariablesService_VariablesHandler_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
